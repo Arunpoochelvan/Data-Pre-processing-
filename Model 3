@@ -1,0 +1,23 @@
+world_cup_raw_data.shape
+
+world_cup_raw_data.isnull().sum()
+
+world_cup_raw_data.describe()
+
+world_cup_raw_data['Winner'].describe()
+
+country_is_winner= world_cup_raw_data[(world_cup_raw_data['Winner']==world_cup_raw_data['Country'])]
+country_is_winner
+
+ country_is_winner.Winner.value_counts().plot(kind='bar')
+ 
+ world_cup_raw_data['Runners-Up'].describe()
+ 
+ country_is_runnersup=world_cup_raw_data[(world_cup_raw_data['Runners-Up']==world_cup_raw_data['Country'])]
+country_is_runnersup
+
+country_is_runnersup.Country.value_counts().plot(kind='bar')
+
+world_cup_raw_data['Third'].describe()
+
+
