@@ -1,0 +1,161 @@
+southpark.head()
+
+print("South Park lines:")
+for i in range(0,5):
+    print("Line #",i+1)
+    print(southpark.Line[i])
+    
+def clean_text(text):
+    '''Clean text by removing unnecessary characters and altering the format of words.'''
+
+    text = text.lower()
+    
+    text = re.sub(r"\n", "",  text)
+    text = re.sub(r"[-()]", "", text)
+    text = re.sub(r"\.", " .", text)
+    text = re.sub(r"\!", " !", text)
+    text = re.sub(r"\?", " ?", text)
+    text = re.sub(r"\,", " ,", text)
+    text = re.sub(r"i'm", "i am", text)
+    text = re.sub(r"he's", "he is", text)
+    text = re.sub(r"she's", "she is", text)
+    text = re.sub(r"it's", "it is", text)
+    text = re.sub(r"that's", "that is", text)
+    text = re.sub(r"what's", "that is", text)
+    text = re.sub(r"\'ll", " will", text)
+    text = re.sub(r"\'re", " are", text)
+    text = re.sub(r"won't", "will not", text)
+    text = re.sub(r"can't", "cannot", text)
+    text = re.sub(r"n't", " not", text)
+    text = re.sub(r"n'", "ng", text)
+    text = re.sub(r"ohh", "oh", text)
+    text = re.sub(r"ohhh", "oh", text)
+    text = re.sub(r"ohhhh", "oh", text)
+    text = re.sub(r"ohhhhh", "oh", text)
+    text = re.sub(r"ohhhhhh", "oh", text)
+    text = re.sub(r"ahh", "ah", text)
+    
+    return text
+    
+    text = []
+
+for line in southpark.Line:
+    text.append(clean_text(line))
+
+limit = 0
+for i in range(limit,limit+20):
+    print(text[i])
+ 
+lengths = []
+for line in text:
+    lengths.append(len(line.split()))
+
+# Create a dataframe so that the values can be inspected
+lengths = pd.DataFrame(lengths, columns=['counts'])
+
+lengths.describe()
+
+max_line_length = 30
+
+short_text = []
+for line in text:
+    if len(line.split()) <= max_line_length:
+        short_text.append(line)
+
+vocab = {}
+for line in short_text:
+    for word in line.split():
+        if word not in vocab:
+            vocab[word] = 1
+        else:
+            vocab[word] += 1
+            
+ threshold = 3
+count = 0
+for k,v in vocab.items():
+    if v >= threshold:
+        count += 1
+        
+source_vocab_to_int = {}
+
+word_num = 0
+for k,v in vocab.items():
+    if v >= threshold:
+        source_vocab_to_int[k] = word_num
+        word_num += 1
+        
+target_vocab_to_int = {}
+
+word_num = 0
+for k,v in vocab.items():
+    if v >= threshold:
+        target_vocab_to_int[k] = word_num
+        word_num += 1
+        
+codes = ['<PAD>','<EOS>','<UNK>','<GO>']
+
+for code in codes:
+    source_vocab_to_int[code] = len(source_vocab_to_int)+1
+    
+for code in codes:
+    target_vocab_to_int[code] = len(target_vocab_to_int)+1
+    
+source_int_to_vocab = {v_i: v for v, v_i in source_vocab_to_int.items()}
+target_int_to_vocab = {v_i: v for v, v_i in target_vocab_to_int.items()}
+
+source_text = short_text[:-1]
+target_text = short_text[1:]
+
+for i in range(len(target_text)):
+    target_text[i] += ' <EOS>'
+    
+source_int = []
+for line in source_text:
+    sentence = []
+    for word in line.split():
+        if word not in source_vocab_to_int:
+            sentence.append(source_vocab_to_int['<UNK>'])
+        else:
+            sentence.append(source_vocab_to_int[word])
+    source_int.append(sentence)
+    
+target_int = []
+for line in target_text:
+    sentence = []
+    for word in line.split():
+        if word not in target_vocab_to_int:
+            sentence.append(target_vocab_to_int['<UNK>'])
+        else:
+            sentence.append(target_vocab_to_int[word])
+    target_int.append(sentence)
+
+def model_inputs():
+    '''Create palceholders for inputs to the model'''
+    input_data = tf.placeholder(tf.int32, [None, None], name='input')
+    targets = tf.placeholder(tf.int32, [None, None], name='targets')
+    lr = tf.placeholder(tf.float32, name='learning_rate')
+    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+
+    return input_data, targets, lr, keep_prob
+    
+def process_encoding_input(target_data, vocab_to_int, batch_size):
+    '''Remove the last word id from each batch and concat the <GO> to the begining of each batch'''
+    ending = tf.strided_slice(target_data, [0, 0], [batch_size, -1], [1, 1])
+    dec_input = tf.concat([tf.fill([batch_size, 1], vocab_to_int['<GO>']), ending], 1)
+
+    return dec_input
+    
+def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, sequence_length, attn_length):
+    '''Create the encoding layer'''
+    lstm = tf.contrib.rnn.BasicLSTMCell(rnn_size)
+    drop = tf.contrib.rnn.DropoutWrapper(lstm, input_keep_prob = keep_prob)
+    cell = tf.contrib.rnn.AttentionCellWrapper(drop, attn_length, state_is_tuple = True)
+    enc_cell = tf.contrib.rnn.MultiRNNCell([cell] * num_layers)
+    _, enc_state = tf.nn.bidirectional_dynamic_rnn(cell_fw = enc_cell,
+                                                   cell_bw = enc_cell,
+                                                   sequence_length = sequence_length,
+                                                   inputs = rnn_inputs, 
+                                                   dtype=tf.float32)
+
+    return enc_state
+
