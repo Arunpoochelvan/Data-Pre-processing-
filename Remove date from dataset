@@ -1,0 +1,14 @@
+It looks like your input (date) is a series of string representations of date and time, with a space between the date and the time. If the format is guaranteed to be consistent with what you showed here, then you could use a list comprehension:
+
+date = [x.split()[0] for x in date]
+dt = np.array(date)
+Alternatively, if date were a series of datetime objects, you could use:
+
+date = [x.date().isoformat() for x in date]
+dt = np.array(date)
+Edit: If I'm understanding correctly that this is a Pandas dataframe with a single column, containing string representations of dates and times, the following would be one way to retain the dtype=object property:
+
+def trim_to_date(s): 
+     return s.split()[0]
+date = date[0].apply(trim_to_date) 
+dt = np.array(date))
