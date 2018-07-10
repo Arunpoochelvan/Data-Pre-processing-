@@ -14,3 +14,15 @@ date = date[0].apply(trim_to_date)
 dt = np.array(date))
 
 map(lambda x: x[:10], dates)
+
+
+from dateutil import *
+
+arr = np.array(['2017-02-14 09:00:00', '2017-02-15 09:00:00', '2017-02-16 09:00:00'])
+
+np.array([parser.parse(i).strftime('%Y-%m-%d') for i in arr])
+
+# array(['2017-02-14', '2017-02-15', '2017-02-16'],
+#       dtype='<U10')
+
+https://stackoverflow.com/questions/48798919/python-how-to-remove-time-from-date-for-np-array
